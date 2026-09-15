@@ -371,7 +371,7 @@ classDiagram
     }
     class SolicitacaoServico {
         SOLID: SRP
-        (só dados e status)
+        -status
     }
     class SolicitacaoServicoService {
         SOLID: SRP + DIP
