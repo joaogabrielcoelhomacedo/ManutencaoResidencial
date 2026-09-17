@@ -1,23 +1,24 @@
-# Manutenção Residencial — Diagramas e Código (GRASP e SOLID)
+# Manutenção Residencial
 
-Sistema de intermediação de serviços de manutenção residencial (conecta **Clientes** que precisam de
-um serviço a **Profissionais** que o executam), modelado em três etapas: diagrama original, aplicação
-dos princípios **GRASP** e aplicação dos princípios **SOLID**.
+Sistema de intermediação de serviços de manutenção residencial: conecta **clientes** que precisam de
+um serviço a **profissionais** que o executam, passando por solicitação, orçamento, agendamento,
+execução, pagamento e avaliação.
 
-## 1. Diagrama de classes — antes (original)
+O modelo aplica os nove padrões **GRASP** e, junto com eles, os cinco princípios **SOLID**. O diagrama
+de classes abaixo corresponde exatamente às classes que estão em `src/`.
 
-Versão inicial do domínio, sem anotação de padrões de design.
+## Diagrama de classes
 
 ```mermaid
 classDiagram
     class Usuario {
         <<abstract>>
-        -idUsuario: int
-        -nome: String
-        -email: String
-        -senha: String
-        -telefone: String
-        -fotoPerfil: String
+        #idUsuario int
+        #nome String
+        #email String
+        #senha String
+        #telefone String
+        #fotoPerfil String
         +cadastrar() boolean
         +login(email, senha) boolean
         +logout() void
@@ -31,34 +32,165 @@ classDiagram
         +avaliarProfissional(execucao, nota, comentario) Avaliacao
     }
     class Profissional {
-        -descricao: String
-        -regiaoAtendimento: String
-        -mediaAvaliacao: double
+        -descricao String
+        -regiaoAtendimento String
+        -mediaAvaliacao double
+        -especialidades List~Especialidade~
+        -disponibilidades List~Disponibilidade~
+        -avaliacoes List~Avaliacao~
         +perfil() String
         +getMediaAvaliacao() double
         +receberAvaliacao(nota, comentario) void
-        +adicionarEspecialidade(categoria, exp) void
-        +definirDisponibilidade(disp) void
+        +adicionarEspecialidade(categoria, experiencia) void
+        +definirDisponibilidade(disponibilidade) void
         +enviarOrcamento(solicitacao, valor) Orcamento
     }
     class Administrador {
         +perfil() String
     }
+    class Avaliavel {
+        <<interface>>
+        +receberAvaliacao(nota, comentario) void
+        +getMediaAvaliacao() double
+    }
     class Endereco {
-        -idEndereco: int
-        -idUsuario: int
-        -logradouro: String
-        -cidade: String
-        -estado: String
-        -cep: String
+        -idEndereco int
+        -idUsuario int
+        -logradouro String
+        -cidade String
+        -estado String
+        -cep String
         +cadastrarEndereco() void
         +editarEndereco() void
     }
+    class Especialidade {
+        -idEspecialidade int
+        -profissional Profissional
+        -idCategoria int
+        -experiencia String
+    }
+    class Disponibilidade {
+        -idDisponibilidade int
+        -idProfissional int
+        -diaSemana String
+        -horaInicio String
+        -horaFim String
+        +verificarConflito(dataHora) boolean
+    }
+    class Categoria {
+        -idCategoria int
+        -nome String
+        -especialidades List~Especialidade~
+        +adicionarEspecialidade(especialidade) void
+        +listarProfissionais() List~Profissional~
+    }
+    class SolicitacaoServico {
+        -idSolicitacao int
+        -idCliente int
+        -idCategoria int
+        -idEndereco int
+        -descricao String
+        -fotos List~String~
+        -videos List~String~
+        -urgencia String
+        -periodoPreferido String
+        -status String
+        +cancelar() void
+        +consultarStatus() String
+        +atualizarStatus(status) void
+    }
+    class Orcamento {
+        -idOrcamento int
+        -idSolicitacao int
+        -idProfissional int
+        -valor double
+        -materiaisInclusos String
+        -prazoEstimado String
+        -status String
+        +aceitar() void
+        +recusar() void
+        +solicitarAlteracao() void
+        +consultarStatus() String
+    }
+    class Agendamento {
+        -idAgendamento int
+        -idOrcamento int
+        -dataHora String
+        -status String
+        +confirmar() void
+        +reagendar(novaData) void
+        +cancelar() void
+        +enviarLembrete() void
+        +iniciarExecucao() ExecucaoServico
+    }
+    class ExecucaoServico {
+        -idExecucao int
+        -idAgendamento int
+        -dataInicio String
+        -dataFim String
+        -observacoes String
+        -fotosServico List~String~
+        -status String
+        +iniciarServico() void
+        +atualizarStatus(status) void
+        +finalizarServico() void
+        +confirmarConclusao() void
+        +gerarPagamento(valorFinal, formaPagamento) Pagamento
+    }
+    class Pagamento {
+        -idPagamento int
+        -idExecucao int
+        -valorFinal double
+        -formaPagamento String
+        -statusPagamento String
+        -dataPagamento String
+        -gateway GatewayPagamento
+        +registrarPagamento() boolean
+        +consultarStatus() String
+    }
+    class GatewayPagamento {
+        <<interface>>
+        +processarPagamento(valor, forma) boolean
+    }
+    class GatewayPagamentoExterno {
+        -provedor String
+        +processarPagamento(valor, forma) boolean
+    }
+    class Avaliacao {
+        -idAvaliacao int
+        -idExecucao int
+        -idCliente int
+        -idProfissional int
+        -nota int
+        -comentario String
+        +denunciar(motivo) Denuncia
+    }
+    class Denuncia {
+        -idDenuncia int
+        -idAvaliacao int
+        -idUsuario int
+        -motivo String
+        -status String
+        -data String
+        +analisar() void
+        +arquivar() void
+        +consultarStatus() String
+    }
+    class GerenciadorDenuncia {
+        -denuncias List~Denuncia~
+        +registrar(denuncia) void
+        +analisarPendentes() List~Denuncia~
+        +arquivar(idDenuncia) void
+    }
     class Notificacao {
-        -tipo: String
-        -mensagem: String
-        -lida: boolean
-        +enviar() void
+        -idNotificacao int
+        -idUsuario int
+        -tipo String
+        -mensagem String
+        -lida boolean
+        -data String
+        -canal CanalNotificacao
+        +enviar(destinatario) void
         +marcarComoLida() void
     }
     class CanalNotificacao {
@@ -68,434 +200,240 @@ classDiagram
     class NotificadorEmail {
         +enviar(mensagem, destinatario) void
     }
-    class SolicitacaoServico {
-        -descricao: String
-        -urgencia: String
-        -status: String
-        +cancelar() void
-        +consultarStatus() String
-        +atualizarStatus(status) void
+    class NotificadorSms {
+        +enviar(mensagem, destinatario) void
     }
-    class Orcamento {
-        -valor: double
-        -status: String
-        +aceitar() void
-        +recusar() void
-        +solicitarAlteracao() void
-        +consultarStatus() String
+    class BuscaProfissionais {
+        -termoBusca String
+        -base List~Profissional~
+        +cadastrarNaBase(profissional) void
+        +buscar(criterios) List~Profissional~
     }
-    class Especialidade {
-        -experiencia: String
-        +getExperiencia() String
-    }
-    class Disponibilidade {
-        -diaSemana: String
-        -horaInicio: String
-        -horaFim: String
-        +verificarConflito(dataHora) boolean
-    }
-    class Avaliavel {
+    class FiltroBusca {
         <<interface>>
-        +receberAvaliacao(nota, comentario) void
-        +getMediaAvaliacao() double
+        +aplicar(profissionais) List~Profissional~
+    }
+    class FiltroCategoria {
+        -categoria Categoria
+        +aplicar(profissionais) List~Profissional~
+    }
+    class FiltroRegiao {
+        -regiao String
+        +aplicar(profissionais) List~Profissional~
     }
     class PainelAdministrativo {
+        -idAdmin int
+        -idUsuario int
         +gerenciarClientes() void
         +gerenciarProfissionais() void
         +gerenciarCategorias() void
         +gerenciarServicos() void
-        +bloquearUsuario(id) void
-        +analisarDenuncias() void
+        +bloquearUsuario(idUsuario) void
         +gerenciarAvaliacoes() void
         +verEstatisticas() void
     }
-    class Categoria {
-        -nome: String
-        +listarProfissionais() List
-    }
-    class BuscaProfissionais {
-        -termoBusca: String
-        +buscar(criterios) List
-    }
-    class FiltroBusca {
-        <<interface>>
-        +aplicar(profissionais) List
-    }
-    class FiltroCategoria {
-        +aplicar(profissionais) List
-    }
-    class Agendamento {
-        -dataHora: String
-        -status: String
-        +confirmar() void
-        +reagendar(novaData) void
-        +cancelar() void
-        +enviarLembrete() void
-    }
-    class ExecucaoServico {
-        -status: String
-        +iniciarServico() void
-        +atualizarStatus(status) void
-        +finalizarServico() void
-        +confirmarConclusao() void
-    }
-    class Pagamento {
-        -valorFinal: double
-        -statusPagamento: String
-        +registrarPagamento() boolean
-        +consultarStatus() String
-    }
-    class Avaliacao {
-        -nota: int
-        -comentario: String
-        +calcularMedia() double
-        +denunciar() void
-    }
-    class GatewayPagamento {
-        <<interface>>
-        +processarPagamento(valor, forma) boolean
-    }
-    class GatewayPagamentoExterno {
-        -provedor: String
-        +processarPagamento(valor, forma) boolean
-    }
-    class Historico {
-        +listarSolicitacoes(idUsuario) List
-        +listarOrcamentos(idUsuario) List
-        +listarAgendamentos(idUsuario) List
-        +listarExecucoes(idUsuario) List
-        +listarPagamentos(idUsuario) List
-        +listarAvaliacoes(idUsuario) List
-    }
-    class Repositorio~T~ {
-        <<interface>>
-        +salvar(entidade) void
-        +listarPorUsuario(idUsuario) List
-    }
-    class RepositorioSolicitacao {
-        +salvar(entidade) void
-        +listarPorUsuario(idUsuario) List
-    }
-
-    Usuario <|-- Cliente
-    Usuario <|-- Profissional
-    Usuario <|-- Administrador
-    Profissional ..|> Avaliavel
-    NotificadorEmail ..|> CanalNotificacao
-    FiltroCategoria ..|> FiltroBusca
-    GatewayPagamentoExterno ..|> GatewayPagamento
-    RepositorioSolicitacao ..|> Repositorio
-    Usuario "1" --> "*" Endereco
-    Usuario "1" --> "*" Notificacao
-    Cliente "1" --> "*" SolicitacaoServico
-    SolicitacaoServico "1" --> "*" Orcamento
-    Profissional "1" --> "*" Especialidade
-    Profissional "1" --> "*" Disponibilidade
-    Categoria "1" --> "*" Profissional
-    Orcamento "1" --> "0..1" Agendamento
-    Agendamento "1" --> "1" ExecucaoServico
-    ExecucaoServico "1" --> "0..1" Avaliacao
-    ExecucaoServico "1" --> "1" Pagamento
-    PainelAdministrativo "1" --> "1" Usuario : administra
-    BuscaProfissionais ..> FiltroBusca : depende de
-    FiltroBusca ..> Categoria : consulta
-    Historico ..> Repositorio : consulta
-    Pagamento ..> GatewayPagamento : depende de
-    Notificacao ..> CanalNotificacao : depende de
-```
-
-## 2. Diagrama de classes — princípios GRASP aplicados
-
-Cada classe traz o padrão GRASP identificado (Information Expert, Creator, Controller, Low Coupling,
-High Cohesion, Polymorphism, Pure Fabrication, Indirection, Protected Variations).
-
-```mermaid
-classDiagram
-    class Usuario {
-        <<abstract>>
-        GRASP: Polymorphism base
-        +cadastrar() boolean
-        +login(email, senha) boolean
-        +perfil() String
-    }
-    class Cliente {
-        GRASP: Creator
-        +solicitarServico(categoria) SolicitacaoServico
-        +avaliarProfissional(execucao, nota, comentario) Avaliacao
-    }
-    class Profissional {
-        GRASP: Creator + Info Expert
-        +enviarOrcamento(solicitacao, valor) Orcamento
-        +receberAvaliacao(nota, comentario) void
-    }
-    class Administrador {
-        GRASP: Polymorphism
-        +perfil() String
-    }
-    class Endereco {
-        GRASP: Info Expert
-    }
-    class Notificacao {
-        GRASP: Low Coupling
-        +enviar() void
-    }
-    class CanalNotificacao {
-        <<interface>>
-        GRASP: Protected Variations
-    }
-    class NotificadorEmail {
-        GRASP: Polymorphism
-    }
-    class SolicitacaoServico {
-        GRASP: Info Expert
-        +atualizarStatus(status) void
-    }
-    class Orcamento {
-        GRASP: Info Expert
-    }
-    class Especialidade {
-        GRASP: Info Expert
-    }
-    class Disponibilidade {
-        GRASP: Info Expert
-        +verificarConflito(dataHora) boolean
-    }
-    class Avaliavel {
-        <<interface>>
-        GRASP: Protected Variations
-    }
-    class PainelAdministrativo {
-        GRASP: Controller
-    }
-    class Categoria {
-        GRASP: Info Expert
-        +listarProfissionais() List
-    }
-    class BuscaProfissionais {
-        GRASP: Controller + Pure Fabrication
-        +buscar(criterios) List
-    }
-    class FiltroBusca {
-        <<interface>>
-        GRASP: Protected Variations
-    }
-    class FiltroCategoria {
-        GRASP: Polymorphism
-    }
-    class Agendamento {
-        GRASP: Creator + Controller
-    }
-    class ExecucaoServico {
-        GRASP: Creator + Controller
-    }
-    class Pagamento {
-        GRASP: Low Coupling
-    }
-    class Avaliacao {
-        GRASP: Info Expert
-        +calcularMedia() double
-    }
-    class GatewayPagamento {
-        <<interface>>
-        GRASP: Protected Variations
-    }
-    class GatewayPagamentoExterno {
-        GRASP: Polymorphism
-    }
-    class Historico {
-        GRASP: Pure Fabrication
-    }
-    class Repositorio~T~ {
-        <<interface>>
-        GRASP: Protected Variations
-    }
-    class RepositorioSolicitacao {
-        GRASP: Polymorphism
-    }
-
-    Usuario <|-- Cliente
-    Usuario <|-- Profissional
-    Usuario <|-- Administrador
-    Profissional ..|> Avaliavel
-    NotificadorEmail ..|> CanalNotificacao
-    FiltroCategoria ..|> FiltroBusca
-    GatewayPagamentoExterno ..|> GatewayPagamento
-    RepositorioSolicitacao ..|> Repositorio
-    Cliente "1" --> "*" SolicitacaoServico
-    SolicitacaoServico "1" --> "*" Orcamento
-    Orcamento "1" --> "0..1" Agendamento
-    Agendamento "1" --> "1" ExecucaoServico
-    ExecucaoServico "1" --> "0..1" Avaliacao
-    ExecucaoServico "1" --> "1" Pagamento
-    PainelAdministrativo "1" --> "1" Usuario : administra
-    BuscaProfissionais ..> FiltroBusca : depende de
-    Historico ..> Repositorio : consulta
-    Pagamento ..> GatewayPagamento : depende de
-```
-
-## 3. Diagrama de classes — princípios SOLID aplicados
-
-A mesma modelagem, reestruturada para deixar explícitos os 5 princípios SOLID. Principais mudanças
-em relação à versão GRASP:
-
-- **SRP** — entidades (`SolicitacaoServico`, `Orcamento`, `Avaliacao`, `Notificacao`) passam a guardar
-  só dados; a regra de negócio migra para *services* dedicados (`SolicitacaoServicoService`,
-  `OrcamentoService`, `AvaliacaoService`, `NotificacaoService`).
-- **OCP** — `FiltroBusca`, `CanalNotificacao` e `GatewayPagamento` ganham uma segunda implementação
-  cada (`FiltroRegiao`, `NotificadorSms`) mostrando que dá pra estender sem alterar código existente.
-- **LSP** — `Cliente`, `Profissional` e `Administrador` continuam substituindo `Usuario` sem quebrar
-  o contrato de `perfil()`.
-- **ISP** — o `PainelAdministrativo`, que no diagrama original tinha 8 métodos numa interface só, é
-  dividido em `GerenciamentoUsuarios`, `GerenciamentoCatalogo`, `GerenciamentoModeracao` e
-  `Estatisticas`.
-- **DIP** — `Pagamento` e `Historico` recebem a abstração (`GatewayPagamento`, `Repositorio`) via
-  construtor, em vez de instanciar a implementação concreta.
-
-```mermaid
-classDiagram
-    class Usuario {
-        <<abstract>>
-        SOLID: LSP
-        +login(email, senha) boolean
-        +perfil() String
-    }
-    class Cliente {
-        SOLID: LSP
-        +solicitarServico(categoria, service) SolicitacaoServico
-    }
-    class Profissional {
-        SOLID: SRP
-    }
-    class Administrador {
-        SOLID: LSP
-    }
-    class SolicitacaoServico {
-        SOLID: SRP
-        -status
-    }
-    class SolicitacaoServicoService {
-        SOLID: SRP + DIP
-        +criar(idCliente, idCategoria) SolicitacaoServico
-    }
-    class Orcamento {
-        SOLID: SRP
-    }
-    class OrcamentoService {
-        SOLID: SRP
-        +enviarOrcamento(solicitacao, profissional, valor) Orcamento
-    }
-    class Avaliacao {
-        SOLID: SRP
-    }
-    class AvaliacaoService {
-        SOLID: SRP
-        +calcularMedia(idProfissional) double
-    }
-    class Notificacao {
-        SOLID: SRP
-    }
-    class NotificacaoService {
-        SOLID: SRP + DIP
-        +enviar(notificacao, destinatario) void
-    }
-    class CanalNotificacao {
-        <<interface>>
-        SOLID: OCP + DIP
-    }
-    class NotificadorEmail {
-        SOLID: OCP
-    }
-    class NotificadorSms {
-        SOLID: OCP extensao
-    }
-    class FiltroBusca {
-        <<interface>>
-        SOLID: OCP
-    }
-    class FiltroCategoria {
-        SOLID: OCP
-    }
-    class FiltroRegiao {
-        SOLID: OCP extensao
-    }
-    class BuscaProfissionaisService {
-        SOLID: DIP
-        +buscar(base, criterio) List
-    }
     class GerenciamentoUsuarios {
         <<interface>>
-        SOLID: ISP
+        +gerenciarClientes() void
+        +gerenciarProfissionais() void
+        +bloquearUsuario(idUsuario) void
     }
     class GerenciamentoCatalogo {
         <<interface>>
-        SOLID: ISP
+        +gerenciarCategorias() void
+        +gerenciarServicos() void
     }
     class GerenciamentoModeracao {
         <<interface>>
-        SOLID: ISP
+        +gerenciarAvaliacoes() void
     }
     class Estatisticas {
         <<interface>>
-        SOLID: ISP
+        +verEstatisticas() void
     }
-    class PainelAdministrativo {
-        SOLID: ISP
-    }
-    class GatewayPagamento {
-        <<interface>>
-        SOLID: OCP + DIP
-    }
-    class GatewayPagamentoExterno {
-        SOLID: OCP
-    }
-    class Pagamento {
-        SOLID: DIP
-        +registrarPagamento(forma) boolean
+    class Historico {
+        -idHistorico int
+        -idUsuario int
+        -repositorioSolicitacao Repositorio~SolicitacaoServico~
+        -orcamentos List~Orcamento~
+        -agendamentos List~Agendamento~
+        -execucoes List~ExecucaoServico~
+        -pagamentos List~Pagamento~
+        -avaliacoes List~Avaliacao~
+        +registrar(orcamento) void
+        +registrar(agendamento) void
+        +registrar(execucao) void
+        +registrar(pagamento) void
+        +registrar(avaliacao) void
+        +listarSolicitacoes(idUsuario) List~SolicitacaoServico~
+        +listarOrcamentos(idUsuario) List~Orcamento~
+        +listarAgendamentos(idUsuario) List~Agendamento~
+        +listarExecucoes(idUsuario) List~ExecucaoServico~
+        +listarPagamentos(idUsuario) List~Pagamento~
+        +listarAvaliacoes(idUsuario) List~Avaliacao~
     }
     class Repositorio~T~ {
         <<interface>>
-        SOLID: DIP
+        +salvar(entidade) void
+        +listarPorUsuario(idUsuario) List~T~
     }
     class RepositorioSolicitacao {
-        SOLID: OCP
-    }
-    class Historico {
-        SOLID: SRP + DIP
+        -solicitacoes List~SolicitacaoServico~
+        +salvar(entidade) void
+        +listarPorUsuario(idUsuario) List~SolicitacaoServico~
     }
 
     Usuario <|-- Cliente
     Usuario <|-- Profissional
+    Avaliavel <|.. Profissional
     Usuario <|-- Administrador
-    NotificadorEmail ..|> CanalNotificacao
-    NotificadorSms ..|> CanalNotificacao
-    FiltroCategoria ..|> FiltroBusca
-    FiltroRegiao ..|> FiltroBusca
-    GatewayPagamentoExterno ..|> GatewayPagamento
-    RepositorioSolicitacao ..|> Repositorio
-    PainelAdministrativo ..|> GerenciamentoUsuarios
-    PainelAdministrativo ..|> GerenciamentoCatalogo
-    PainelAdministrativo ..|> GerenciamentoModeracao
-    PainelAdministrativo ..|> Estatisticas
-    Cliente ..> SolicitacaoServicoService : usa
-    SolicitacaoServicoService ..> Repositorio : depende de
-    NotificacaoService ..> CanalNotificacao : depende de
-    BuscaProfissionaisService ..> FiltroBusca : depende de
+    GatewayPagamento <|.. GatewayPagamentoExterno
+    CanalNotificacao <|.. NotificadorEmail
+    CanalNotificacao <|.. NotificadorSms
+    FiltroBusca <|.. FiltroCategoria
+    FiltroBusca <|.. FiltroRegiao
+    GerenciamentoUsuarios <|.. PainelAdministrativo
+    GerenciamentoCatalogo <|.. PainelAdministrativo
+    GerenciamentoModeracao <|.. PainelAdministrativo
+    Estatisticas <|.. PainelAdministrativo
+    Repositorio <|.. RepositorioSolicitacao
+    Profissional "1" --> "*" Especialidade : especialidades
+    Profissional "1" --> "*" Disponibilidade : disponibilidades
+    Profissional "1" --> "*" Avaliacao : avaliacoes
+    Categoria "1" --> "*" Especialidade : especialidades
+    GerenciadorDenuncia "1" --> "*" Denuncia : denuncias
+    BuscaProfissionais "1" --> "*" Profissional : base
+    FiltroCategoria "1" --> "1" Categoria : categoria
+    Historico "1" --> "*" Orcamento : orcamentos
+    Historico "1" --> "*" Agendamento : agendamentos
+    Historico "1" --> "*" ExecucaoServico : execucoes
+    Historico "1" --> "*" Pagamento : pagamentos
+    Historico "1" --> "*" Avaliacao : avaliacoes
+    RepositorioSolicitacao "1" --> "*" SolicitacaoServico : solicitacoes
+    Usuario "1" --> "*" Endereco
+    Cliente "1" --> "*" SolicitacaoServico
+    Categoria "1" --> "*" SolicitacaoServico
+    Endereco "1" --> "*" SolicitacaoServico
+    SolicitacaoServico "1" --> "*" Orcamento
+    Profissional "1" --> "*" Orcamento
+    Orcamento "1" --> "0..1" Agendamento
+    Agendamento "1" --> "1" ExecucaoServico
+    ExecucaoServico "1" --> "1" Pagamento
+    ExecucaoServico "1" --> "0..1" Avaliacao
+    Cliente "1" --> "*" Avaliacao
+    Avaliacao "1" --> "*" Denuncia
+    Usuario "1" --> "*" Denuncia
+    Usuario "1" --> "*" Notificacao
+    Administrador "1" --> "1" PainelAdministrativo
+    Usuario "1" --> "*" Historico
     Pagamento ..> GatewayPagamento : depende de
+    Notificacao ..> CanalNotificacao : depende de
     Historico ..> Repositorio : depende de
 ```
 
-## Estrutura do repositório
+Getters e setters simples foram omitidos do diagrama, como é usual em diagrama de classes. Todo o
+restante — atributos, métodos, heranças, associações e dependências — está igual ao código.
+
+## Padrões GRASP aplicados
+
+| Classe | Padrão GRASP | Onde aparece |
+| --- | --- | --- |
+| `Usuario` | Polymorphism (base) | Classe abstrata que define `perfil()` e deixa cada subtipo responder de forma diferente. |
+| `Cliente` | Creator | Cria `SolicitacaoServico` e `Avaliacao`, porque é quem tem os dados necessários para inicializá-las. |
+| `Profissional` | Creator, Information Expert | Cria `Orcamento` e `Especialidade`; guarda as próprias avaliações, então é ele quem calcula a média. |
+| `Administrador` | Polymorphism | Sobrescreve `perfil()` mantendo o contrato de `Usuario`. |
+| `Avaliavel` | Protected Variations | Interface que protege o restante do sistema de mudanças em quem pode ser avaliado. |
+| `Endereco` | Information Expert | Guarda e valida os próprios dados de endereço. |
+| `Especialidade` | Information Expert | Sabe informar a experiência do profissional naquela categoria. |
+| `Disponibilidade` | Information Expert | Tem os horários, então é ela quem verifica conflito de agenda. |
+| `Categoria` | Information Expert | Conhece as especialidades vinculadas e deriva delas a lista de profissionais. |
+| `SolicitacaoServico` | Information Expert | Concentra os dados da solicitação e controla o próprio status. |
+| `Orcamento` | Information Expert | Guarda valor, prazo e status, e responde pelas transições de aceite ou recusa. |
+| `Agendamento` | Creator, Information Expert | Cria a `ExecucaoServico` correspondente e mantém data, hora e status. |
+| `ExecucaoServico` | Creator, Information Expert | Cria o `Pagamento` da execução e controla o andamento do serviço. |
+| `Pagamento` | Low Coupling | Depende da interface `GatewayPagamento`, não de um provedor concreto. |
+| `GatewayPagamento` | Protected Variations, Indirection | Intermediário entre o sistema e o provedor externo: trocar de provedor não afeta `Pagamento`. |
+| `GatewayPagamentoExterno` | Polymorphism | Implementação concreta do gateway de pagamento. |
+| `Avaliacao` | Information Expert, Creator | Guarda nota e comentário e cria a `Denuncia` quando acionada. |
+| `Denuncia` | Information Expert | Mantém motivo e status da denúncia. |
+| `GerenciadorDenuncia` | High Cohesion, Pure Fabrication | Classe com uma única responsabilidade: tratar denúncias. Não é conceito do domínio, foi criada para não sobrecarregar o `PainelAdministrativo`. |
+| `Notificacao` | Low Coupling | Delega o envio para `CanalNotificacao` em vez de conhecer o meio de envio. |
+| `CanalNotificacao` | Protected Variations | Isola o sistema da forma de envio (e-mail, SMS, push). |
+| `NotificadorEmail` | Polymorphism | Implementação concreta do canal de notificação (e-mail). |
+| `NotificadorSms` | Polymorphism | Segunda implementação do canal de notificação (SMS) — mostra a extensão sem alterar `Notificacao`. |
+| `BuscaProfissionais` | Controller, Pure Fabrication | Coordena a operação de busca sem ser um conceito do domínio. |
+| `FiltroBusca` | Protected Variations | Permite novos critérios de busca sem alterar `BuscaProfissionais`. |
+| `FiltroCategoria` | Polymorphism | Implementação concreta do filtro (por categoria). |
+| `FiltroRegiao` | Polymorphism | Segunda implementação do filtro (por região) — mostra a extensão sem alterar `BuscaProfissionais`. |
+| `PainelAdministrativo` | Controller | Recebe e encaminha as operações administrativas do sistema. |
+| `GerenciamentoUsuarios` | Protected Variations | Interface segregada só com as operações sobre usuários. |
+| `GerenciamentoCatalogo` | Protected Variations | Interface segregada só com as operações sobre categorias e serviços. |
+| `GerenciamentoModeracao` | Protected Variations | Interface segregada só com a operação de moderação de avaliações. |
+| `Estatisticas` | Protected Variations | Interface segregada só com a consulta de estatísticas. |
+| `Historico` | Pure Fabrication | Classe artificial criada só para consultar registros, mantendo as entidades coesas. |
+| `Repositorio` | Protected Variations, Indirection | Abstrai o acesso aos dados: `Historico` não conhece onde nem como os registros são guardados. |
+| `RepositorioSolicitacao` | Polymorphism | Implementação concreta do repositório de solicitações. |
+
+## Princípios SOLID aplicados
+
+**S — Responsabilidade Única**
+
+| Onde | Por quê |
+| --- | --- |
+| `SolicitacaoServico, Orcamento, Agendamento, ExecucaoServico, Pagamento, Avaliacao, Denuncia` | cada uma guarda só os próprios dados e o próprio ciclo de status — não decide nada sobre outra entidade. |
+| `GerenciadorDenuncia` | responsabilidade única de tratar denúncias, separada do `PainelAdministrativo`. |
+
+**O — Aberto/Fechado**
+
+| Onde | Por quê |
+| --- | --- |
+| `FiltroBusca → FiltroCategoria e FiltroRegiao` | dá pra adicionar um critério de busca novo sem alterar `BuscaProfissionais`. |
+| `CanalNotificacao → NotificadorEmail e NotificadorSms` | dá pra adicionar um canal novo sem alterar `Notificacao`. |
+
+**L — Substituição de Liskov**
+
+| Onde | Por quê |
+| --- | --- |
+| `Usuario → Cliente, Profissional, Administrador` | os três substituem `Usuario` em qualquer lugar do código sem quebrar o contrato de `perfil()`. |
+
+**I — Segregação de Interface**
+
+| Onde | Por quê |
+| --- | --- |
+| `PainelAdministrativo implementa GerenciamentoUsuarios, GerenciamentoCatalogo, GerenciamentoModeracao e Estatisticas` | em vez de uma interface única com todos os métodos, cada responsabilidade tem sua própria interface — quem depender só de estatísticas, por exemplo, não é forçado a conhecer os métodos de moderação. |
+
+**D — Inversão de Dependência**
+
+| Onde | Por quê |
+| --- | --- |
+| `Pagamento depende de GatewayPagamento` | não de `GatewayPagamentoExterno` diretamente. |
+| `Notificacao depende de CanalNotificacao` | não de `NotificadorEmail`/`NotificadorSms` diretamente. |
+| `Historico depende de Repositorio<T>` | não de `RepositorioSolicitacao` diretamente. |
+
+## Como executar
+
+Pelo terminal, dentro da pasta do projeto:
+
+```bash
+javac -d out src/*.java
+java -cp out Main
+```
+
+Pelo VS Code: abrir a pasta do projeto, instalar o *Extension Pack for Java* e executar `Main.java`.
+
+A classe `Main` não faz parte do modelo: ela existe apenas para demonstrar o sistema funcionando,
+percorrendo o fluxo completo de cadastro, busca (por categoria e por região), solicitação, orçamento,
+agendamento, execução, pagamento, avaliação, denúncia e notificação (e-mail e SMS).
+
+## Estrutura
 
 ```
 ManutencaoResidencial/
-├── README.md                 <- este arquivo (diagramas + explicação)
-└── src/main/java/com/manutencaoresidencial/
-    ├── grasp/                <- código Java da versão com princípios GRASP
-    └── solid/                <- código Java da versão com princípios SOLID
+├── README.md
+└── src/
+    ├── Main.java
+    ├── Usuario.java, Cliente.java, Profissional.java, Administrador.java
+    ├── SolicitacaoServico.java, Orcamento.java, Agendamento.java, ExecucaoServico.java
+    ├── Pagamento.java, Avaliacao.java, Denuncia.java, Notificacao.java
+    └── demais classes e interfaces do modelo
 ```
-
-## Sobre o projeto
-
-Trabalho acadêmico de modelagem de sistema — domínio de intermediação de serviços de manutenção
-residencial (conecta clientes que precisam de um reparo/serviço a profissionais disponíveis na
-região, com fluxo de solicitação → orçamento → agendamento → execução → pagamento → avaliação).
